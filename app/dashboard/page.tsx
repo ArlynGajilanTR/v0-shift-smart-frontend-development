@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -22,9 +22,39 @@ import {
   addQuarters,
   subQuarters,
 } from "date-fns"
+import { api } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock data for demonstration
-const upcomingShifts = [
+// Type definitions
+interface Shift {
+  id: string;
+  employee: string;
+  employee_id: string;
+  role: string;
+  bureau: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+interface Conflict {
+  id: string;
+  type: string;
+  employee?: string;
+  date: string;
+  severity: string;
+}
+
+interface Stats {
+  totalEmployees: number;
+  activeEmployees: number;
+  upcomingShifts: number;
+  unresolvedConflicts: number;
+}
+
+// Mock data as fallback
+const mockUpcomingShifts = [
   {
     id: 1,
     employee: "Marco Rossi",
@@ -81,65 +111,132 @@ const upcomingShifts = [
   },
 ]
 
-const recentConflicts = [
+const mockRecentConflicts = [
   {
-    id: 1,
+    id: "1",
     type: "Double Booking",
     employee: "Marco Rossi",
     date: "2025-11-02",
     severity: "high",
   },
   {
-    id: 2,
+    id: "2",
     type: "Rest Period Violation",
     employee: "Sofia Romano",
     date: "2025-11-03",
     severity: "medium",
   },
   {
-    id: 3,
+    id: "3",
     type: "Skill Gap",
     date: "2025-11-05",
     severity: "low",
   },
 ]
 
-const stats = [
-  {
-    label: "Total Employees",
-    value: "24",
-    icon: Users,
-    change: "+2 this month",
-    color: "border-l-4 border-l-charcoal",
-  },
-  {
-    label: "Active Shifts",
-    value: "156",
-    icon: CalendarIcon,
-    change: "This week",
-    color: "border-l-4 border-l-primary",
-  },
-  {
-    label: "Open Conflicts",
-    value: "3",
-    icon: AlertCircle,
-    change: "Needs attention",
-    color: "border-l-4 border-l-red-500",
-  },
-  {
-    label: "Coverage Rate",
-    value: "94%",
-    icon: Clock,
-    change: "+3% from last week",
-    color: "border-l-4 border-l-green-500",
-  },
-]
-
 export default function DashboardPage() {
+  const { toast } = useToast()
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [upcomingShifts, setUpcomingShifts] = useState<Shift[]>([])
+  const [recentConflicts, setRecentConflicts] = useState<Conflict[]>([])
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    activeShifts: 0,
+    openConflicts: 0,
+    coverageRate: "0%",
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Fetch dashboard data on mount
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        // Fetch all data in parallel
+        const [statsData, shiftsData, conflictsData] = await Promise.all([
+          api.dashboard.getStats(),
+          api.shifts.upcoming(7),
+          api.conflicts.list({ status: 'unresolved', limit: 5 })
+        ]);
+
+        // Update stats
+        setStats({
+          totalEmployees: statsData.stats.totalEmployees || 0,
+          activeShifts: statsData.stats.upcomingShifts || 0,
+          openConflicts: statsData.stats.unresolvedConflicts || 0,
+          coverageRate: "94%", // TODO: Calculate from API
+        })
+
+        // Update shifts
+        setUpcomingShifts(shiftsData.shifts || [])
+
+        // Update conflicts
+        setRecentConflicts(conflictsData.conflicts || [])
+
+      } catch (error: any) {
+        console.error('Failed to fetch dashboard data:', error)
+        toast({
+          title: "Failed to load dashboard",
+          description: error.message || "Using cached data",
+          variant: "destructive",
+        })
+        // Use mock data as fallback
+        setUpcomingShifts(mockUpcomingShifts as any)
+        setRecentConflicts(mockRecentConflicts)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [toast])
+
+  const statsDisplay = [
+    {
+      label: "Total Employees",
+      value: stats.totalEmployees.toString(),
+      icon: Users,
+      change: "Breaking News Team",
+      color: "border-l-4 border-l-charcoal",
+    },
+    {
+      label: "Active Shifts",
+      value: stats.activeShifts.toString(),
+      icon: CalendarIcon,
+      change: "This week",
+      color: "border-l-4 border-l-primary",
+    },
+    {
+      label: "Open Conflicts",
+      value: stats.openConflicts.toString(),
+      icon: AlertCircle,
+      change: "Needs attention",
+      color: "border-l-4 border-l-red-500",
+    },
+    {
+      label: "Coverage Rate",
+      value: stats.coverageRate,
+      icon: Clock,
+      change: "Milan & Rome",
+      color: "border-l-4 border-l-green-500",
+    },
+  ]
 
   const getShiftsForDate = (date: Date) => {
-    return upcomingShifts.filter((shift) => format(new Date(shift.date), "yyyy-MM-dd") === format(date, "yyyy-MM-dd"))
+    return upcomingShifts.filter((shift) => {
+      const shiftDate = shift.date;
+      return format(new Date(shiftDate), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   const WeekView = () => {
@@ -349,7 +446,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statsDisplay.map((stat) => (
           <Card
             key={stat.label}
             className={`${stat.color} shadow-sm hover:shadow-md transition-all hover:scale-[1.02] h-full`}
@@ -500,7 +597,7 @@ export default function DashboardPage() {
                   <TableCell className="font-medium">{shift.role}</TableCell>
                   <TableCell className="font-medium">{shift.bureau}</TableCell>
                   <TableCell className="font-medium">{format(new Date(shift.date), "MMM dd, yyyy")}</TableCell>
-                  <TableCell className="font-medium">{shift.time}</TableCell>
+                  <TableCell className="font-medium">{shift.startTime} - {shift.endTime}</TableCell>
                   <TableCell>
                     <Badge variant={shift.status === "confirmed" ? "default" : "secondary"} className="font-semibold">
                       {shift.status}
