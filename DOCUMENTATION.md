@@ -783,63 +783,243 @@ import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 
 ---
 
-## Future Enhancements
+## Backend Integration Requirements
 
-### Potential Improvements
-1. **Dark Mode** - Add dark theme support using Tailwind dark: variants
-2. **Animations** - More sophisticated animations using Framer Motion
-3. **Data Visualization** - Charts using Recharts for analytics
-4. **Real-time Updates** - WebSocket integration for live schedule changes
-5. **Mobile App** - React Native version for mobile scheduling
-6. **Notifications** - Push notifications for conflict alerts
-7. **Export** - PDF/CSV export of schedules
-8. **Integrations** - Calendar sync (Google Calendar, Outlook)
+### Overview
 
----
+The ShiftSmart frontend is designed to work with a backend API and Supabase database. The following sections outline the integration points that need to be implemented by the backend team (Cursor).
 
-## Maintenance Notes
+### Database Schema (Supabase)
 
-### Adding New Colors
-Update `globals.css` with new design tokens:
-\`\`\`css
-@theme inline {
-  --new-color: [h] [s%] [l%];
+**Required Tables:**
+
+1. **users**
+   - id (uuid, primary key)
+   - email (text, unique)
+   - full_name (text)
+   - phone (text)
+   - title (text) - enum: 'senior', 'junior', 'lead', 'support'
+   - bureau (text) - enum: 'Milan', 'Rome'
+   - status (text) - enum: 'active', 'inactive'
+   - created_at (timestamp)
+   - updated_at (timestamp)
+
+2. **shifts**
+   - id (uuid, primary key)
+   - employee_id (uuid, foreign key to users)
+   - date (date)
+   - start_time (time)
+   - end_time (time)
+   - bureau (text) - enum: 'Milan', 'Rome'
+   - role (text) - enum: 'Senior Editor', 'Junior Editor', 'Lead Editor', 'Support Staff'
+   - status (text) - enum: 'confirmed', 'pending', 'cancelled'
+   - created_at (timestamp)
+   - updated_at (timestamp)
+
+3. **conflicts**
+   - id (uuid, primary key)
+   - type (text) - enum: 'Double Booking', 'Rest Period Violation', 'Skill Gap', 'Understaffed', 'Overtime Warning', 'Cross-Bureau Conflict'
+   - severity (text) - enum: 'high', 'medium', 'low'
+   - employee_id (uuid, foreign key to users, nullable)
+   - description (text)
+   - date (date)
+   - status (text) - enum: 'unresolved', 'acknowledged', 'resolved'
+   - detected_at (timestamp)
+   - acknowledged_at (timestamp, nullable)
+   - acknowledged_by (uuid, foreign key to users, nullable)
+   - resolved_at (timestamp, nullable)
+   - resolved_by (uuid, foreign key to users, nullable)
+   - created_at (timestamp)
+   - updated_at (timestamp)
+
+4. **shift_preferences**
+   - id (uuid, primary key)
+   - employee_id (uuid, foreign key to users)
+   - preferred_days (text[]) - array of days: ['Monday', 'Tuesday', etc.]
+   - preferred_shifts (text[]) - array: ['Morning', 'Afternoon', 'Evening', 'Night']
+   - max_shifts_per_week (integer)
+   - notes (text)
+   - created_at (timestamp)
+   - updated_at (timestamp)
+
+### API Endpoints Required
+
+#### Authentication
+- `POST /api/auth/login` - User login with Reuters email
+- `POST /api/auth/signup` - New user registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/session` - Get current user session
+
+#### Shifts
+- `GET /api/shifts` - Get all shifts (with filters: date range, bureau, employee)
+- `POST /api/shifts` - Create new shift
+- `PUT /api/shifts/:id` - Update shift
+- `DELETE /api/shifts/:id` - Delete shift
+- `PATCH /api/shifts/:id/move` - Move shift to different date/time (drag & drop)
+
+#### Employees
+- `GET /api/employees` - Get all employees (with filters: bureau, role, status)
+- `GET /api/employees/:id` - Get employee details
+- `PUT /api/employees/:id` - Update employee information
+- `POST /api/employees` - Create new employee
+- `DELETE /api/employees/:id` - Delete employee
+
+#### Shift Preferences
+- `GET /api/employees/:id/preferences` - Get employee shift preferences
+- `PUT /api/employees/:id/preferences` - Update employee shift preferences
+
+#### Conflicts
+- `GET /api/conflicts` - Get all conflicts (with filters: status, severity)
+- `GET /api/conflicts/:id` - Get conflict details
+- `PATCH /api/conflicts/:id/resolve` - Mark conflict as resolved
+  - **Required fields:** resolved_by (user_id), resolved_at (timestamp)
+  - **Action:** Update status to 'resolved', record who resolved it and when
+- `PATCH /api/conflicts/:id/acknowledge` - Mark conflict as acknowledged
+  - **Required fields:** acknowledged_by (user_id), acknowledged_at (timestamp)
+  - **Action:** Update status to 'acknowledged', record who acknowledged it and when
+- `DELETE /api/conflicts/:id` - Dismiss/delete conflict
+  - **Action:** Remove from active conflicts or archive for records
+
+#### Settings
+- `GET /api/users/:id/settings` - Get user settings
+- `PUT /api/users/:id/settings` - Update user settings
+- `PUT /api/users/:id/password` - Change user password
+
+### Conflict Detection Logic
+
+**Backend Requirements:**
+
+The backend should implement automated conflict detection that runs:
+1. When a new shift is created
+2. When an existing shift is modified
+3. On a scheduled basis (e.g., nightly) to catch any missed conflicts
+
+**Conflict Types to Detect:**
+
+1. **Double Booking** (High Severity)
+   - Check if employee has overlapping shifts on the same day
+   - Logic: `shift1.start_time < shift2.end_time AND shift1.end_time > shift2.start_time`
+
+2. **Rest Period Violation** (High Severity)
+   - Check if employee has less than 11 hours between consecutive shifts
+   - Logic: Calculate time between shift1.end_time and shift2.start_time
+
+3. **Skill Gap** (Medium Severity)
+   - Check if shift has required role coverage (e.g., at least one Senior Editor)
+   - Logic: Query shifts for time period and check role distribution
+
+4. **Understaffed** (Medium Severity)
+   - Check if shift meets minimum staffing requirements
+   - Logic: Count employees scheduled for shift, compare to minimum (e.g., 2)
+
+5. **Overtime Warning** (Low Severity)
+   - Check if employee is approaching maximum weekly hours
+   - Logic: Sum employee's weekly hours, compare to threshold (e.g., 48 hours)
+
+6. **Cross-Bureau Conflict** (Medium Severity)
+   - Check if employee is scheduled in different bureaus on consecutive days
+   - Logic: Compare bureau field for consecutive day shifts
+
+### Frontend Integration Points
+
+**Conflicts Page (`app/dashboard/conflicts/page.tsx`):**
+
+The following functions need backend integration:
+
+\`\`\`typescript
+// Mark conflict as resolved
+const handleResolve = async (conflictId: number, conflictType: string) => {
+  // Call: PATCH /api/conflicts/:id/resolve
+  // Body: { resolved_by: currentUserId, resolved_at: new Date() }
+  // Update local state on success
+  // Show toast notification
+}
+
+// Mark conflict as acknowledged
+const handleAcknowledge = async (conflictId: number, conflictType: string) => {
+  // Call: PATCH /api/conflicts/:id/acknowledge
+  // Body: { acknowledged_by: currentUserId, acknowledged_at: new Date() }
+  // Update local state on success
+  // Show toast notification
+}
+
+// Dismiss conflict
+const handleDismiss = async (conflictId: number) => {
+  // Call: DELETE /api/conflicts/:id
+  // Update local state on success
+  // Show toast notification
 }
 \`\`\`
 
-### Adding New Fonts
-1. Add font files to `/public/fonts/`
-2. Add @font-face declarations in `globals.css`
-3. Update font-family in theme configuration
+**Schedule Page (`app/dashboard/schedule/page.tsx`):**
 
-### Modifying Spacing
-Use Tailwind's spacing scale consistently:
-- Small: `gap-2`, `p-2`, `mb-2` (8px)
-- Medium: `gap-4`, `p-4`, `mb-4` (16px)
-- Large: `gap-6`, `p-6`, `mb-6` (24px)
-- Extra Large: `gap-8`, `p-8`, `mb-8` (32px)
+Drag and drop functionality needs to call:
 
-### Component Updates
-When updating shadcn/ui components:
-\`\`\`bash
-npx shadcn@latest add [component-name]
+\`\`\`typescript
+// When shift is dropped on new date
+const handleDragEnd = async (event) => {
+  // Call: PATCH /api/shifts/:id/move
+  // Body: { date: newDate, start_time: newStartTime, end_time: newEndTime }
+  // Trigger conflict detection
+  // Update local state on success
+}
 \`\`\`
 
----
+**Employee Detail Page (`app/dashboard/employees/[id]/page.tsx`):**
 
-## Browser Support
+Save button needs to call:
 
-**Supported Browsers:**
-- Chrome/Edge (last 2 versions)
-- Firefox (last 2 versions)
-- Safari (last 2 versions)
+\`\`\`typescript
+// Save employee details
+const handleSave = async () => {
+  // Call: PUT /api/employees/:id
+  // Body: { full_name, email, phone, title, bureau, status }
+  // Call: PUT /api/employees/:id/preferences
+  // Body: { preferred_days, preferred_shifts, max_shifts_per_week, notes }
+  // Update local state on success
+}
+\`\`\`
 
-**CSS Features Used:**
-- CSS Grid
-- Flexbox
-- CSS Custom Properties (design tokens)
-- CSS Transitions
-- backdrop-filter (for overlays)
+**Settings Page (`app/dashboard/settings/page.tsx`):**
+
+Save buttons need to call:
+
+\`\`\`typescript
+// Save profile information
+const handleSaveProfile = async () => {
+  // Call: PUT /api/users/:id/settings
+  // Body: { full_name, email, phone, title, bureau }
+  // Update local state on success
+}
+
+// Change password
+const handleChangePassword = async () => {
+  // Call: PUT /api/users/:id/password
+  // Body: { current_password, new_password }
+  // Show success/error message
+}
+\`\`\`
+
+### Real-time Updates (Optional Enhancement)
+
+Consider implementing WebSocket connections for real-time updates:
+- Notify users when conflicts are detected
+- Update schedule view when shifts are modified by other users
+- Show live conflict resolution status
+
+### Security Considerations
+
+1. **Authentication:** All API endpoints should require valid JWT tokens
+2. **Authorization:** Users should only access/modify their own data or data they have permission for
+3. **Input Validation:** Validate all input data on the backend
+4. **SQL Injection Prevention:** Use parameterized queries
+5. **Rate Limiting:** Implement rate limiting on API endpoints
+
+### Testing Requirements
+
+1. **Unit Tests:** Test conflict detection logic thoroughly
+2. **Integration Tests:** Test API endpoints with various scenarios
+3. **E2E Tests:** Test complete user flows (create shift → detect conflict → resolve)
 
 ---
 

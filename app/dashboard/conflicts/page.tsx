@@ -16,6 +16,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 // Mock conflict data
 const mockConflicts = [
@@ -120,6 +122,7 @@ const conflictTypeIcons = {
 export default function ConflictsPage() {
   const [conflicts] = useState(mockConflicts)
   const [selectedSeverity, setSelectedSeverity] = useState("all")
+  const { toast } = useToast()
 
   // Filter conflicts
   const unresolvedConflicts = conflicts.filter((c) => c.status === "unresolved")
@@ -163,6 +166,48 @@ export default function ConflictsPage() {
       default:
         return "secondary"
     }
+  }
+
+  const handleResolve = (conflictId: number, conflictType: string) => {
+    // TODO: Backend integration needed - Cursor to implement
+    // This should:
+    // 1. Update conflict status to "resolved" in Supabase
+    // 2. Record resolution timestamp and user who resolved it
+    // 3. Update local state to reflect changes
+
+    toast({
+      title: "Conflict Resolved",
+      description: `${conflictType} has been marked as resolved.`,
+      duration: 3000,
+    })
+  }
+
+  const handleAcknowledge = (conflictId: number, conflictType: string) => {
+    // TODO: Backend integration needed - Cursor to implement
+    // This should:
+    // 1. Update conflict status to "acknowledged" in Supabase
+    // 2. Record acknowledgment timestamp and user who acknowledged it
+    // 3. Update local state to reflect changes
+
+    toast({
+      title: "Conflict Acknowledged",
+      description: `${conflictType} has been acknowledged and moved to the acknowledged list.`,
+      duration: 3000,
+    })
+  }
+
+  const handleDismiss = (conflictId: number) => {
+    // TODO: Backend integration needed - Cursor to implement
+    // This should:
+    // 1. Remove conflict from active list in Supabase
+    // 2. Optionally archive the conflict for records
+    // 3. Update local state to reflect changes
+
+    toast({
+      title: "Conflict Dismissed",
+      description: "The conflict has been dismissed.",
+      duration: 3000,
+    })
   }
 
   return (
@@ -328,13 +373,23 @@ export default function ConflictsPage() {
                         <span>{format(conflict.detectedAt, "MMM dd, yyyy HH:mm")}</span>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" className="flex-1">
+                        <Button size="sm" className="flex-1" onClick={() => handleResolve(conflict.id, conflict.type)}>
                           Resolve
                         </Button>
-                        <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleAcknowledge(conflict.id, conflict.type)}
+                        >
                           Acknowledge
                         </Button>
-                        <Button size="sm" variant="outline" className="bg-transparent">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent"
+                          onClick={() => handleDismiss(conflict.id)}
+                        >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -370,7 +425,7 @@ export default function ConflictsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex gap-2">
-                      <Button size="sm" className="flex-1">
+                      <Button size="sm" className="flex-1" onClick={() => handleResolve(conflict.id, conflict.type)}>
                         Resolve
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 bg-transparent">
@@ -422,11 +477,33 @@ export default function ConflictsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Toaster />
     </div>
   )
 }
 
 function ConflictDetails({ conflict }: { conflict: any }) {
+  const { toast } = useToast()
+
+  const handleResolveFromDialog = () => {
+    // TODO: Backend integration needed - Cursor to implement
+    toast({
+      title: "Conflict Resolved",
+      description: `${conflict.type} has been marked as resolved.`,
+      duration: 3000,
+    })
+  }
+
+  const handleAcknowledgeFromDialog = () => {
+    // TODO: Backend integration needed - Cursor to implement
+    toast({
+      title: "Conflict Acknowledged",
+      description: `${conflict.type} has been acknowledged.`,
+      duration: 3000,
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -505,8 +582,10 @@ function ConflictDetails({ conflict }: { conflict: any }) {
       </div>
 
       <div className="flex gap-2 pt-4">
-        <Button className="flex-1">Mark as Resolved</Button>
-        <Button variant="outline" className="flex-1 bg-transparent">
+        <Button className="flex-1" onClick={handleResolveFromDialog}>
+          Mark as Resolved
+        </Button>
+        <Button variant="outline" className="flex-1 bg-transparent" onClick={handleAcknowledgeFromDialog}>
           Acknowledge
         </Button>
       </div>

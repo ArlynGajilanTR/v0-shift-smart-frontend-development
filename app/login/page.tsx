@@ -33,11 +33,11 @@ export default function LoginPage() {
       <header className="border-b border-border bg-white">
         <div className="container mx-auto px-6 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <svg width="120" height="24" viewBox="0 0 120 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <text x="0" y="18" fontFamily="Knowledge2017" fontSize="20" fontWeight="700" fill="#FF6600">
-                REUTERS
-              </text>
-            </svg>
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/r_pri_logo_rgb_color%20%281%29-zb8SoziJFx53ete2qb0nuMZV21AEdt.png"
+              alt="Reuters"
+              className="h-12 w-auto"
+            />
           </Link>
         </div>
       </header>
