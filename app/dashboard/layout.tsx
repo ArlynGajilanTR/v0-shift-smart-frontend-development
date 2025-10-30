@@ -93,7 +93,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
-          <h1 className="text-lg font-semibold">ShiftSmart</h1>
+          <h1 className="text-lg font-semibold">
+            <span className="text-gray-500">Shift</span>
+            <span className="text-foreground">Smart</span>
+          </h1>
+          {/* </CHANGE> */}
         </header>
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </SidebarInset>
