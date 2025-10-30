@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,8 +20,10 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { api } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock employee data
+// Mock employee data as fallback
 const mockEmployees = [
   {
     id: 1,
@@ -114,11 +116,47 @@ const mockEmployees = [
 ]
 
 export default function EmployeesPage() {
-  const [employees] = useState(mockEmployees)
+  const { toast } = useToast()
+  const [employees, setEmployees] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterBureau, setFilterBureau] = useState("all")
   const [filterRole, setFilterRole] = useState("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+
+  // Fetch employees from API
+  useEffect(() => {
+    async function fetchEmployees() {
+      try {
+        const response = await api.employees.list()
+        const employeeData = response.employees.map((emp: any) => ({
+          id: emp.id,
+          name: emp.full_name,
+          email: emp.email,
+          phone: emp.phone || "+39 02 0000 0000",
+          role: emp.title || emp.shift_role,
+          bureau: emp.bureaus?.name || emp.bureau || "Milan",
+          status: emp.status || "active",
+          shiftsThisMonth: 0, // TODO: Calculate from shifts
+          initials: emp.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??",
+        }))
+        setEmployees(employeeData)
+      } catch (error: any) {
+        console.error("Failed to fetch employees:", error)
+        toast({
+          title: "Failed to load employees",
+          description: error.message || "Using cached data",
+          variant: "destructive",
+        })
+        // Fallback to mock data
+        setEmployees(mockEmployees)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchEmployees()
+  }, [toast])
 
   // Filter employees based on search and filters
   const filteredEmployees = employees.filter((emp) => {
@@ -136,6 +174,17 @@ export default function EmployeesPage() {
     active: employees.filter((e) => e.status === "active").length,
     milan: employees.filter((e) => e.bureau === "Milan").length,
     rome: employees.filter((e) => e.bureau === "Rome").length,
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading employees...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

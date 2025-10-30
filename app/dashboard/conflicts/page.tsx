@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,8 +18,9 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
+import { api } from "@/lib/api-client"
 
-// Mock conflict data
+// Mock conflict data as fallback
 const mockConflicts = [
   {
     id: 1,
@@ -120,9 +121,33 @@ const conflictTypeIcons = {
 }
 
 export default function ConflictsPage() {
-  const [conflicts] = useState(mockConflicts)
-  const [selectedSeverity, setSelectedSeverity] = useState("all")
   const { toast } = useToast()
+  const [conflicts, setConflicts] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedSeverity, setSelectedSeverity] = useState("all")
+
+  // Fetch conflicts from API
+  useEffect(() => {
+    async function fetchConflicts() {
+      try {
+        const response = await api.conflicts.list()
+        setConflicts(response.conflicts || [])
+      } catch (error: any) {
+        console.error("Failed to fetch conflicts:", error)
+        toast({
+          title: "Failed to load conflicts",
+          description: error.message || "Using cached data",
+          variant: "destructive",
+        })
+        // Fallback to mock data
+        setConflicts(mockConflicts)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchConflicts()
+  }, [toast])
 
   // Filter conflicts
   const unresolvedConflicts = conflicts.filter((c) => c.status === "unresolved")
@@ -168,46 +193,82 @@ export default function ConflictsPage() {
     }
   }
 
-  const handleResolve = (conflictId: number, conflictType: string) => {
-    // TODO: Backend integration needed - Cursor to implement
-    // This should:
-    // 1. Update conflict status to "resolved" in Supabase
-    // 2. Record resolution timestamp and user who resolved it
-    // 3. Update local state to reflect changes
-
-    toast({
-      title: "Conflict Resolved",
-      description: `${conflictType} has been marked as resolved.`,
-      duration: 3000,
-    })
+  const handleResolve = async (conflictId: number, conflictType: string) => {
+    try {
+      await api.conflicts.resolve(String(conflictId))
+      
+      // Update local state
+      setConflicts(prev => prev.map(c => 
+        c.id === conflictId ? { ...c, status: 'resolved', resolvedAt: new Date() } : c
+      ))
+      
+      toast({
+        title: "Conflict Resolved",
+        description: `${conflictType} has been marked as resolved.`,
+        duration: 3000,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to resolve conflict",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleAcknowledge = (conflictId: number, conflictType: string) => {
-    // TODO: Backend integration needed - Cursor to implement
-    // This should:
-    // 1. Update conflict status to "acknowledged" in Supabase
-    // 2. Record acknowledgment timestamp and user who acknowledged it
-    // 3. Update local state to reflect changes
-
-    toast({
-      title: "Conflict Acknowledged",
-      description: `${conflictType} has been acknowledged and moved to the acknowledged list.`,
-      duration: 3000,
-    })
+  const handleAcknowledge = async (conflictId: number, conflictType: string) => {
+    try {
+      await api.conflicts.acknowledge(String(conflictId))
+      
+      // Update local state
+      setConflicts(prev => prev.map(c => 
+        c.id === conflictId ? { ...c, status: 'acknowledged' } : c
+      ))
+      
+      toast({
+        title: "Conflict Acknowledged",
+        description: `${conflictType} has been acknowledged and moved to the acknowledged list.`,
+        duration: 3000,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to acknowledge conflict",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleDismiss = (conflictId: number) => {
-    // TODO: Backend integration needed - Cursor to implement
-    // This should:
-    // 1. Remove conflict from active list in Supabase
-    // 2. Optionally archive the conflict for records
-    // 3. Update local state to reflect changes
+  const handleDismiss = async (conflictId: number) => {
+    try {
+      await api.conflicts.dismiss(String(conflictId))
+      
+      // Update local state - remove from list
+      setConflicts(prev => prev.filter(c => c.id !== conflictId))
+      
+      toast({
+        title: "Conflict Dismissed",
+        description: "The conflict has been dismissed.",
+        duration: 3000,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to dismiss conflict",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
 
-    toast({
-      title: "Conflict Dismissed",
-      description: "The conflict has been dismissed.",
-      duration: 3000,
-    })
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading conflicts...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -486,22 +547,38 @@ export default function ConflictsPage() {
 function ConflictDetails({ conflict }: { conflict: any }) {
   const { toast } = useToast()
 
-  const handleResolveFromDialog = () => {
-    // TODO: Backend integration needed - Cursor to implement
-    toast({
-      title: "Conflict Resolved",
-      description: `${conflict.type} has been marked as resolved.`,
-      duration: 3000,
-    })
+  const handleResolveFromDialog = async () => {
+    try {
+      await api.conflicts.resolve(String(conflict.id))
+      toast({
+        title: "Conflict Resolved",
+        description: `${conflict.type} has been marked as resolved.`,
+        duration: 3000,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to resolve",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleAcknowledgeFromDialog = () => {
-    // TODO: Backend integration needed - Cursor to implement
-    toast({
-      title: "Conflict Acknowledged",
-      description: `${conflict.type} has been acknowledged.`,
-      duration: 3000,
-    })
+  const handleAcknowledgeFromDialog = async () => {
+    try {
+      await api.conflicts.acknowledge(String(conflict.id))
+      toast({
+        title: "Conflict Acknowledged",
+        description: `${conflict.type} has been acknowledged.`,
+        duration: 3000,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to acknowledge",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
   return (

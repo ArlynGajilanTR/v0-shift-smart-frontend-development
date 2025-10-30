@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   DndContext,
   type DragEndEvent,
@@ -44,8 +44,10 @@ import {
   startOfQuarter,
   endOfQuarter,
 } from "date-fns"
+import { api } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock data for shifts
+// Mock data for shifts as fallback
 const mockShifts = [
   {
     id: 1,
@@ -214,12 +216,52 @@ function DroppableMonthDay({
 }
 
 export default function SchedulePage() {
-  const [shifts, setShifts] = useState(mockShifts)
+  const { toast } = useToast()
+  const [shifts, setShifts] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [selectedView, setSelectedView] = useState("week")
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [currentQuarter, setCurrentQuarter] = useState(new Date())
   const [activeShift, setActiveShift] = useState<any>(null)
+
+  // Fetch shifts from API
+  useEffect(() => {
+    async function fetchShifts() {
+      try {
+        const response = await api.shifts.list({
+          start_date: format(addDays(new Date(), -30), "yyyy-MM-dd"),
+          end_date: format(addDays(new Date(), 60), "yyyy-MM-dd"),
+        })
+        
+        const shiftData = response.shifts.map((shift: any) => ({
+          id: shift.id,
+          employee: shift.users?.full_name || "Unassigned",
+          role: shift.users?.title || shift.users?.shift_role || "Unknown",
+          bureau: shift.bureaus?.name || "Milan",
+          date: new Date(shift.start_time),
+          startTime: format(new Date(shift.start_time), "HH:mm"),
+          endTime: format(new Date(shift.end_time), "HH:mm"),
+          status: shift.status || "pending",
+        }))
+        
+        setShifts(shiftData)
+      } catch (error: any) {
+        console.error("Failed to fetch shifts:", error)
+        toast({
+          title: "Failed to load shifts",
+          description: error.message || "Using cached data",
+          variant: "destructive",
+        })
+        // Fallback to mock data
+        setShifts(mockShifts)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchShifts()
+  }, [toast])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -255,7 +297,7 @@ export default function SchedulePage() {
     setActiveShift(shift)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveShift(null)
 
@@ -265,10 +307,38 @@ export default function SchedulePage() {
     const newDate = over.data.current?.date
 
     if (shiftId && newDate) {
-      setShifts((prevShifts) =>
-        prevShifts.map((shift) => (shift.id === shiftId ? { ...shift, date: new Date(newDate) } : shift)),
-      )
+      try {
+        // Update via API
+        await api.shifts.move(shiftId, format(newDate, "yyyy-MM-dd"))
+        
+        // Update local state
+        setShifts((prevShifts) =>
+          prevShifts.map((shift) => (shift.id === shiftId ? { ...shift, date: new Date(newDate) } : shift)),
+        )
+        
+        toast({
+          title: "Shift moved",
+          description: "Shift has been successfully moved to the new date",
+        })
+      } catch (error: any) {
+        toast({
+          title: "Failed to move shift",
+          description: error.message,
+          variant: "destructive",
+        })
+      }
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading schedule...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

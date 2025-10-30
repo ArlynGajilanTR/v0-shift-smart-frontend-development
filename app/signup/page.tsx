@@ -10,15 +10,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { api } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SignupPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
-    bureau: "",
+    bureau_id: "",
     role: "",
+    title: "",
+    shift_role: "",
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -26,11 +31,33 @@ export default function SignupPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate account creation
-    setTimeout(() => {
+    try {
+      // Real API signup
+      await api.auth.signup({
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.fullName,
+        bureau_id: formData.bureau_id,
+        role: formData.role,
+        title: formData.title,
+        shift_role: formData.shift_role,
+      })
+      
+      toast({
+        title: "Account created",
+        description: "Welcome to ShiftSmart! Please log in.",
+      })
+      
+      router.push("/login")
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 1000)
+    }
   }
 
   return (
@@ -91,27 +118,41 @@ export default function SignupPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bureau">Bureau</Label>
-                <Select value={formData.bureau} onValueChange={(value) => setFormData({ ...formData, bureau: value })}>
+                <Select value={formData.bureau_id} onValueChange={(value) => setFormData({ ...formData, bureau_id: value })}>
                   <SelectTrigger id="bureau">
                     <SelectValue placeholder="Select your bureau" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="milan">Milan</SelectItem>
-                    <SelectItem value="rome">Rome</SelectItem>
+                    <SelectItem value="ITA-MILAN">Milan</SelectItem>
+                    <SelectItem value="ITA-ROME">Rome</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                <Select 
+                  value={formData.shift_role} 
+                  onValueChange={(value) => {
+                    const titleMap: any = {
+                      "editor": "Breaking News Editor",
+                      "senior": "Senior Breaking News Correspondent",
+                      "correspondent": "Breaking News Correspondent"
+                    }
+                    setFormData({ 
+                      ...formData, 
+                      shift_role: value,
+                      role: "Breaking News",
+                      title: titleMap[value] || value
+                    })
+                  }}
+                >
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lead">Lead Editor</SelectItem>
-                    <SelectItem value="senior">Senior Editor</SelectItem>
-                    <SelectItem value="junior">Junior Editor</SelectItem>
-                    <SelectItem value="support">Support Staff</SelectItem>
+                    <SelectItem value="editor">Editor</SelectItem>
+                    <SelectItem value="senior">Senior Correspondent</SelectItem>
+                    <SelectItem value="correspondent">Correspondent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
