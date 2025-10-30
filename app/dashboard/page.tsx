@@ -110,7 +110,7 @@ const stats = [
     value: "24",
     icon: Users,
     change: "+2 this month",
-    color: "border-l-4 border-l-blue-500",
+    color: "border-l-4 border-l-charcoal",
   },
   {
     label: "Active Shifts",
@@ -352,16 +352,18 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <Card
             key={stat.label}
-            className={`${stat.color} shadow-sm hover:shadow-md transition-all hover:scale-[1.02]`}
+            className={`${stat.color} shadow-sm hover:shadow-md transition-all hover:scale-[1.02] h-full`}
           >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 min-h-[72px]">
               <CardTitle className="text-sm font-semibold">{stat.label}</CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground font-medium">{stat.change}</p>
-              <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <CardContent className="flex flex-col">
+              <div className="mb-4">
+                <div className="text-3xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground font-medium mt-1">{stat.change}</p>
+              </div>
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-500"
                   style={{ width: stat.label === "Coverage Rate" ? stat.value : "75%" }}

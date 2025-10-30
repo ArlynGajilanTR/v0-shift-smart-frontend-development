@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Plus, Search, Edit, Trash2, Mail, Phone, MapPin } from "lucide-react"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -294,10 +295,20 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Link href={`/dashboard/employees/${employee.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 transition-transform hover:scale-110"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive transition-transform hover:scale-110"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -314,7 +325,7 @@ export default function EmployeesPage() {
         <TabsContent value="cards">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredEmployees.map((employee) => (
-              <Card key={employee.id}>
+              <Card key={employee.id} className="transition-all hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -349,11 +360,21 @@ export default function EmployeesPage() {
                     <div className="text-2xl font-bold">{employee.shiftsThisMonth}</div>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                      <Edit className="mr-2 h-3 w-3" />
-                      Edit
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive bg-transparent">
+                    <Link href={`/dashboard/employees/${employee.id}`} className="flex-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full bg-transparent transition-all hover:scale-105"
+                      >
+                        <Edit className="mr-2 h-3 w-3" />
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive bg-transparent transition-transform hover:scale-110"
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
