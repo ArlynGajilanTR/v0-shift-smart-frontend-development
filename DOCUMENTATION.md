@@ -207,7 +207,8 @@ app/
     │   ├── page.tsx                  # Employee directory
     │   ├── loading.tsx               # Loading state
     │   └── [id]/page.tsx             # Employee detail/edit page
-    └── conflicts/page.tsx            # Conflict detection panel
+    ├── conflicts/page.tsx            # Conflict detection panel
+    └── settings/page.tsx             # User settings and preferences
 
 components/
 └── ui/                               # shadcn/ui components
@@ -424,6 +425,115 @@ import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 <Badge className="bg-yellow-100 text-yellow-700">Low</Badge>
 \`\`\`
 
+#### 8. Settings Page (`app/dashboard/settings/page.tsx`)
+
+**Purpose:** User account settings and preferences management
+
+**Key Features:**
+- Profile information editing (name, email, phone, title, bureau)
+- Password change functionality
+- Notification preferences
+- Calendar view preferences
+- Two-card layout for organization
+
+**Layout Structure:**
+\`\`\`tsx
+<div className="space-y-6">
+  {/* Profile Information Card */}
+  <Card className="shadow-sm hover:shadow-md transition-all border-l-4 border-l-primary">
+    <CardHeader>
+      <CardTitle className="text-2xl font-bold">Profile Information</CardTitle>
+      <CardDescription>Update your personal details</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <form className="space-y-4">
+        {/* Form fields */}
+      </form>
+    </CardContent>
+  </Card>
+
+  {/* Password Change Card */}
+  <Card className="shadow-sm hover:shadow-md transition-all border-l-4 border-l-charcoal">
+    <CardHeader>
+      <CardTitle className="text-2xl font-bold">Change Password</CardTitle>
+      <CardDescription>Update your password</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {/* Password fields */}
+    </CardContent>
+  </Card>
+</div>
+\`\`\`
+
+**Form Field Pattern:**
+\`\`\`tsx
+<div className="space-y-2">
+  <Label htmlFor="name" className="font-semibold">Full Name</Label>
+  <Input 
+    id="name" 
+    defaultValue="John Doe"
+    className="transition-all focus:ring-2 focus:ring-primary"
+  />
+</div>
+\`\`\`
+
+**Select Dropdown Pattern:**
+\`\`\`tsx
+<div className="space-y-2">
+  <Label htmlFor="title" className="font-semibold">Title</Label>
+  <Select defaultValue="senior">
+    <SelectTrigger className="transition-all focus:ring-2 focus:ring-primary">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="senior">Senior Editor</SelectItem>
+      <SelectItem value="junior">Junior Editor</SelectItem>
+      <SelectItem value="lead">Lead Editor</SelectItem>
+      <SelectItem value="support">Support Staff</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+\`\`\`
+
+**Preferences Section:**
+\`\`\`tsx
+<div className="space-y-4 pt-6 border-t">
+  <h3 className="text-lg font-bold">Preferences</h3>
+  <div className="flex items-center justify-between">
+    <div>
+      <Label className="font-semibold">Email Notifications</Label>
+      <p className="text-sm text-muted-foreground">
+        Receive email alerts for schedule changes
+      </p>
+    </div>
+    <input type="checkbox" className="h-4 w-4" />
+  </div>
+</div>
+\`\`\`
+
+**Action Buttons:**
+\`\`\`tsx
+<div className="flex gap-3 pt-4">
+  <Button className="font-semibold hover:scale-105 transition-transform">
+    Save Changes
+  </Button>
+  <Button 
+    variant="outline" 
+    className="font-semibold hover:bg-gray-100 transition-colors bg-transparent"
+  >
+    Cancel
+  </Button>
+</div>
+\`\`\`
+
+**CSS Highlights:**
+- Two-card layout with different left border colors (orange for profile, charcoal for password)
+- Consistent form field spacing with `space-y-4`
+- Focus states with `focus:ring-2 focus:ring-primary`
+- Hover effects on buttons with scale and color transitions
+- Preferences section separated with border-top
+- Responsive layout adapts to mobile screens
+
 ---
 
 ## Dashboard Layout
@@ -596,6 +706,59 @@ import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
       Feature description explaining the functionality.
     </p>
   </div>
+</div>
+\`\`\`
+
+### Settings Form Field
+
+\`\`\`tsx
+<div className="space-y-2">
+  <Label htmlFor="field-id" className="font-semibold">Field Label</Label>
+  <Input 
+    id="field-id" 
+    type="text"
+    placeholder="Enter value"
+    className="transition-all focus:ring-2 focus:ring-primary"
+  />
+</div>
+\`\`\`
+
+### Settings Select Dropdown
+
+\`\`\`tsx
+<div className="space-y-2">
+  <Label htmlFor="select-id" className="font-semibold">Select Label</Label>
+  <Select defaultValue="option1">
+    <SelectTrigger 
+      id="select-id"
+      className="transition-all focus:ring-2 focus:ring-primary"
+    >
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="option1">Option 1</SelectItem>
+      <SelectItem value="option2">Option 2</SelectItem>
+      <SelectItem value="option3">Option 3</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+\`\`\`
+
+### Preference Toggle
+
+\`\`\`tsx
+<div className="flex items-center justify-between py-3">
+  <div className="flex-1">
+    <Label className="font-semibold">Preference Name</Label>
+    <p className="text-sm text-muted-foreground mt-1">
+      Description of what this preference controls
+    </p>
+  </div>
+  <input 
+    type="checkbox" 
+    defaultChecked 
+    className="h-4 w-4 text-primary focus:ring-2 focus:ring-primary"
+  />
 </div>
 \`\`\`
 
